@@ -11,13 +11,158 @@
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
+  "homepage": "https://github.com/Anwealso/cf-click",
+  "bugs": {
+    "url": "https://github.com/Anwealso/cf-click/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Anwealso/cf-click.git"
+  },
   "contributes": {
     "commands": [
       {
         "command": "cf-click.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "cf-click.openFile",
+        "title": "CFCLICK: openFile"
+      },
+      {
+        "command": "cf-click.openURL",
+        "title": "CFCLICK: openURL"
+      },
+      {
+        "command": "cf-click.openURLGitAlias",
+        "title": "CFCLICK: openURLGitAlias"
+      },
+      {
+        "command": "cf-click.createFile",
+        "title": "CFCLICK: createFile"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "cf-click",
+          "name": "Related Links",
+          "when": "cf-click:fileIsHTML && config.html-related-links.showIfHTML || config.html-related-links.alwaysShow"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "cf-click.createFile",
+          "when": "view == cf-click && viewItem == relatedFile",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "HTML Related Links",
+      "properties": {
+        "cf-click.include": {
+          "type": [
+            "array",
+            "object"
+          ],
+          "default": [],
+          "scope": "resource",
+          "description": "Which other links to include (regexs)",
+          "items": {
+            "type": "string",
+            "description": "Find the text containing a linked file (regex). First captured group is used"
+          },
+          "patternProperties": {
+            "^.+$": {
+              "type": "array",
+              "default": [],
+              "description": "Which other links to include for this languageId (array of: strings or find/filePath object)",
+              "items": {
+                "type": [
+                  "string",
+                  "object"
+                ],
+                "description": "If string, first capturing group is used",
+                "properties": {
+                  "find": {
+                    "type": "string",
+                    "description": "Find the text containing a linked file (regex)"
+                  },
+                  "filePath": {
+                    "type": "string",
+                    "description": "Modify the linked file path found, use any capture group from 'find' regex. Use \"/\" as first character to signal that file path is relative to a fileroot path",
+                    "default": "$1"
+                  },
+                  "lineNr": {
+                    "type": "string",
+                    "description": "To which line number do you want to jump, use any capture group from 'find' regex and/or an expression using current position in the file. No default"
+                  },
+                  "lineSearch": {
+                    "type": "string",
+                    "description": "To which line do you want to jump, search for the literal string, use any capture group from 'find' regex. No default"
+                  },
+                  "charPos": {
+                    "type": "string",
+                    "description": "To which character position do you want to jump, use any capture group from 'find' regex and/or an expression using current position in the file. Only used when `lineNr` is defined. No default"
+                  },
+                  "rangeGroup": {
+                    "type": "string",
+                    "description": "The capture group that is the range for the \"Follow link\". Use $n notation. Default: if no 'lineNr' specified uses capture group from 'filePath'."
+                  },
+                  "isAbsolutePath": {
+                    "type": "boolean",
+                    "description": "Is the result of 'filePath' an absolute path. default: false"
+                  },
+                  "label": {
+                    "type": "string",
+                    "description": "The label used in the view, use any capture group from 'find' regex. default: file path"
+                  },
+                  "documentLink": {
+                    "type": "boolean",
+                    "description": "Create a document link for this find. default: true"
+                  },
+                  "allowCurrentFile": {
+                    "type": "boolean",
+                    "description": "Is a link to the current file allowed. Used in Table of Content views. default: false"
+                  }
+                },
+                "required": [
+                  "find"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "cf-click.exclude": {
+          "type": "array",
+          "default": [],
+          "scope": "resource",
+          "description": "Which links to exclude (regexs, a match is enough)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cf-click.fileroot": {
+          "type": "array",
+          "default": [],
+          "scope": "resource",
+          "description": "Root directories for the sites in this workspace folder",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cf-click.enableLogging": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Show a few log statements when clicked on a row or opening a file. Used for debugging."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
