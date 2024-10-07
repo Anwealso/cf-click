@@ -38,7 +38,6 @@ class RelatedLinksProvider {
   private _onDidChangeTreeData: vscode.EventEmitter<unknown>;
   onDidChangeTreeData: vscode.Event<unknown>;
   paths: RelatedPaths;
-  lockDocumentPath: string | undefined;
   content: RelatedLink[] | undefined;
   removePathRE: RegExp;
   constructor() {
@@ -46,7 +45,6 @@ class RelatedLinksProvider {
     this._onDidChangeTreeData = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
     this.paths = new RelatedPaths(undefined);
-    this.lockDocumentPath = undefined;
     this.content = undefined;
     this.removePathRE = new RegExp(".*?[\\\\/](?=[^\\\\/]+$)(.*)");
   }
@@ -55,9 +53,7 @@ class RelatedLinksProvider {
   }
   setPaths(paths: RelatedPaths) {
     this.paths = paths;
-    if (this.needsRefresh()) {
-      this.refresh();
-    }
+    this.refresh();
   }
   getTreeItem(element: vscode.TreeItem) {
     return element;
