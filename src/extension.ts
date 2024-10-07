@@ -1,26 +1,166 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import paths = require("path");
+import * as fs from "fs";
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  if (basepath === undefined || basepath === undefined) {
+    return;
+  }
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "cf-click" is now active!');
+  // Use the console to output diagnostic information (console.log) and errors (console.error)
+  // This line of code will only be executed once when your extension is activated
+  console.log('Congratulations, your extension "cf-click" is now active!');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('cf-click.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from cf-click!');
-	});
+  let sel: vscode.DocumentSelector = { scheme: "file", language: "lua" };
+  context.subscriptions.push(
+    vscode.languages.registerDocumentLinkProvider(
+      sel,
+      new DocumentLinkProvider()
+    )
+  );
 
-	context.subscriptions.push(disposable);
+  let fileSystemWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/*.lua",
+    false,
+    true,
+    false
+  );
+  context.subscriptions.push(
+    fileSystemWatcher.onDidCreate((filePath) => {
+      // console.log(filePath + " create!");
+      fileMap = readFileMap(basepath);
+    })
+  );
+  context.subscriptions.push(
+    fileSystemWatcher.onDidDelete((filePath) => {
+      // console.log(filePath + " delete!");
+      fileMap = readFileMap(basepath);
+    })
+  );
+
+  fileMap = readFileMap(basepath);
+
+  // https://github.com/davidhewitt/shebang-language-associator/blob/master/src/extension.ts
+
+  /*
+   * Any files open on startup need to have shebang checked.
+   */
+  checkAllFiles();
+
+  /*
+   * Re-check when configuration changes.
+   */
+  let disposable = vscode.workspace.onDidChangeConfiguration(checkAllFiles);
+  context.subscriptions.push(disposable);
+
+  /*
+   * And also when further files are opened we will check them.
+   */
+  disposable = vscode.workspace.onDidOpenTextDocument(checkFile);
+  context.subscriptions.push(disposable);
+
+  disposable = vscode.workspace.onDidSaveTextDocument(checkFile);
+  context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
+// this method is called when your extension is deactivated
 export function deactivate() {}
+
+function readFileMap(folder: string): {} {
+  let paths = {};
+  let files = fs.readdirSync(folder);
+  files.forEach((path) => {
+    let fullPath = folder + "/" + path;
+    if (!fs.lstatSync(fullPath).isDirectory()) {
+      paths[path] = fullPath;
+    } else if (path.substr(0, 1) != ".") {
+      let red = readFileMap(fullPath);
+      Object.keys(red).forEach((k) => {
+        paths[k] = red[k];
+      });
+    }
+  });
+  return paths;
+}
+
+var fileMap = {};
+let basepath = vscode.workspace.workspaceFolders![0].name;
+let pattern = /(?:[\\s^\W])((?:[A-Z](?:[a-zA-Z]+))(?=[.:(]))+/g;
+
+export class DocumentLinkProvider implements vscode.DocumentLinkProvider {
+  public provideDocumentLinks(
+    doc: vscode.TextDocument,
+    token: vscode.CancellationToken
+  ): vscode.ProviderResult<vscode.DocumentLink[]> {
+    let documentLinks: vscode.ProviderResult<vscode.DocumentLink[]> = [];
+    let line_idx = 0;
+
+    while (line_idx < doc.lineCount) {
+      let line = doc.lineAt(line_idx);
+      var result = pattern.exec(line.text);
+      while (result != null) {
+        let fileName = result[1] + ".lua";
+        let path = fileMap[fileName];
+        if (path != null && doc.fileName != path) {
+          let start = result.index + (result[0].length - result[1].length);
+          let uri = vscode.Uri.file(path);
+          let range = new vscode.Range(
+            line_idx,
+            start,
+            line_idx,
+            start + result[1].length
+          );
+          let documentlink = new vscode.DocumentLink(
+            range,
+            uri.with({ fragment: result[1] })
+          );
+          documentLinks.push(documentlink);
+        }
+
+        result = pattern.exec(line.text);
+      }
+
+      line_idx++;
+    }
+    return documentLinks;
+  }
+}
+
+/**
+ * Re-check all open files
+ */
+function checkAllFiles() {
+  for (const td of vscode.workspace.textDocuments) {
+    checkFile(td);
+  }
+}
+
+/**
+ * Check whether a file has a matching shebang, and apply the appropriate
+ * language mode if so.
+ */
+function checkFile(doc: vscode.TextDocument) {
+  let shebang = doc.lineAt(0);
+
+  // skip files with extensions
+  if (!/^[^.]+$/.test(paths.basename(doc.fileName))) {
+    return;
+  }
+
+  let associations = vscode.workspace
+    .getConfiguration("lua-ctrl-click")
+    .get<Array<any>>("associations");
+
+  if (associations) {
+    for (const association of associations) {
+      if (shebang.text.match(new RegExp(association.pattern))) {
+        vscode.languages.setTextDocumentLanguage(doc, association.language);
+        break;
+      }
+    }
+  }
+}
