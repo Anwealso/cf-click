@@ -1,6 +1,6 @@
 ![CF-CLICK Banner](banner_narrow.jpg)
 
-An extension to jump to files in CF.
+An extension to jump to files in ColdFusion.
 
 ---
 
