@@ -631,7 +631,7 @@ var variableSubstitutionAsync = async (
 };
 var variableSubstitution = (
   text: string,
-  args: object,
+  args: object | null,
   document: vscode.TextDocument,
   enableLogging: boolean
 ): string | undefined => {
