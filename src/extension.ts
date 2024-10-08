@@ -33,7 +33,7 @@ function getExpressionFunction(expr: any) {
   }
 }
 
-class RelatedLinksProvider {
+class RelatedLinksProvider implements vscode.TreeDataProvider<unknown> {
   editor: vscode.TextEditor | undefined;
   private _onDidChangeTreeData: vscode.EventEmitter<unknown>;
   onDidChangeTreeData: vscode.Event<unknown>;
@@ -183,20 +183,30 @@ class RelatedPaths {
     );
     var includeConfig: any | undefined = config.get("include");
     var exclude: string[] | RegExp[] | undefined = config.get("exclude");
-    var fileroot: string = config.get("fileroot")!;
+    var fileroots: string[] = config.get("fileroot")!;
+
+    const stripTrailingSlash = (str: string) => {
+      return str.endsWith("/") || str.endsWith("\\") ? str.slice(0, -1) : str;
+    };
+    fileroots.map((fileroot, i) => {
+      fileroots[i] = stripTrailingSlash(fileroot);
+    });
+
     this.sortByPosition = config.get("sortByPosition");
     this.removePathFromLabel = config.get("removePathFromLabel");
 
     var ownfilePath = document.uri.fsPath;
     var docFolder = path.dirname(ownfilePath);
-    var filerootFolder = docFolder;
+    var filerootFolders = [docFolder];
     if (workspaceFolder) {
-      filerootFolder = workspaceFolder.uri.fsPath;
-      for (const root of fileroot) {
-        let possibleRoot = path.join(filerootFolder, root);
-        if (docFolder.startsWith(possibleRoot)) {
-          filerootFolder = possibleRoot;
-          break;
+      let workspaceBasePath = workspaceFolder.uri.fsPath;
+      for (const fileroot of fileroots) {
+        for (const root of fileroot) {
+          let possibleRoot = path.join(workspaceBasePath, root);
+          if (docFolder.startsWith(possibleRoot)) {
+            filerootFolders.push(possibleRoot);
+            break;
+          }
         }
       }
     }
@@ -235,11 +245,16 @@ class RelatedPaths {
         continue;
       }
       for (const includeObj of this.include[languageId]) {
+        // For each regex include pattern
         let linkRE = new RegExp(includeObj.find, "gmi");
         let replaceRE = new RegExp(includeObj.find, "mi"); // needs to be a copy, replace() resets property lastIndex
         let result: RegExpExecArray | null;
         while ((result = linkRE.exec(docText)) != null) {
+          // While we found a result to searching the regex pattern in the current document
+          // Note: result[0] is the full regex match and result[1] is the capture string of the regex
+
           if (result.length < 2) continue; // no matching group defined
+
           let filePath: string = result[0].replace(
             replaceRE,
             includeObj.filePath
@@ -248,20 +263,47 @@ class RelatedPaths {
           if (filePath.length === 0) {
             continue;
           }
+          /* ------------------------------------ = ----------------------------------- */
+          // Derive the absolute path to the file listed in the code path
           if (filePath === "/") filePath = "/__root__";
           let linkPath = filePath;
           if (!includeObj.isAbsolutePath) {
-            linkPath = path.join(
-              filePath.startsWith("/") ? filerootFolder : docFolder,
-              filePath.startsWith("/") ? filePath.substring(1) : filePath
-            );
+            // Strip off any # if needed
+            filePath = filePath.replace("#application.root#", "");
+
+            // Need to change this prepending of filerootFolder based on whether the file is app or db
+            if (filePath.startsWith("/")) {
+              // The path is an absolute path from the repo root
+              for (let filerootFolder of filerootFolders) {
+                // Test each root folder
+                linkPath = path.join(filerootFolder, filePath.substring(1));
+                if (fs.existsSync(linkPath)) {
+                  break;
+                }
+              }
+            } else {
+              // The path is a local path from the curent document dir
+              linkPath = path.join(docFolder, filePath);
+            }
           }
+
+          // linkPath =
+          //   "/Users/alexnicholson/coding/projects/cf-click/TestProject/Application/images/house.png";
+          console.log(linkPath);
+
+          // Only show the link if the file actually exists
+          if (!fs.existsSync(linkPath)) {
+            continue;
+          }
+          /* ------------------------------------ = ----------------------------------- */
+
           let isCurrentFile = linkPath === ownfilePath;
           if (!includeObj.allowCurrentFile && isCurrentFile) {
             continue;
           }
-          let filePos = result.index;
-          let filePosEnd = linkRE.lastIndex;
+          // Display the link only over the capture portion of the regex match
+          let filePos = result.index + result[0].indexOf(result[1]);
+          let filePosEnd = filePos + result[1].length;
           var offset2DisplayPosition = (offset: number) => {
             let position = document.positionAt(offset);
             return {
@@ -285,16 +327,16 @@ class RelatedPaths {
           ) {
             continue;
           } // regex matching biggest text ranges should be specified first
-          let adjustRange = (txt: string) => {
-            filePos += result![0].indexOf(txt);
-            filePosEnd = filePos + txt.length;
-          };
-          if (includeObj.rangeGroup) {
-            let groupNr = getCaptureGroupNr(includeObj.rangeGroup);
-            if (groupNr !== undefined && groupNr < result.length) {
-              adjustRange(result[groupNr]);
-            }
-          }
+          // let adjustRange = (txt: string) => {
+          //   filePos += result![0].indexOf(txt);
+          //   filePosEnd = filePos + txt.length;
+          // };
+          // if (includeObj.rangeGroup) {
+          //   let groupNr = getCaptureGroupNr(includeObj.rangeGroup);
+          //   if (groupNr !== undefined && groupNr < result.length) {
+          //     adjustRange(result[groupNr]);
+          //   }
+          // }
           let pathRange = new vscode.Range(
             document.positionAt(filePos),
             document.positionAt(filePosEnd)
