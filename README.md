@@ -28,3 +28,8 @@ An extension to jump to files in ColdFusion.
 
 - CF project path (`CF_PROJ_PATH`)
 - SQL project path (`DB_PROJ_PATH`)
+
+## Known Bugs
+
+- On click, extension cannot find the correct file to open in most path cases
+- The link highlight in the code highlights the whole section of code matched by the regex (i.e. the whole tag) - not just the "capture" (i.e. just the filename) portion of the regex as desired. When fixed this will make the code highlighting less inrusive and give the user a better signifier that they are following the file link specifically
