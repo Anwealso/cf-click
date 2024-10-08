@@ -24,10 +24,6 @@
       {
         "command": "cf-click.helloWorld",
         "title": "Hello World"
-      },
-      {
-        "command": "cf-click.openFile",
-        "title": "CFCLICK: openFile"
       }
     ],
     "views": {

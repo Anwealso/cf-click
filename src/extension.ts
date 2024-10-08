@@ -81,15 +81,13 @@ class RelatedLinksProvider {
       ) {
         label = `${filePath}`;
         compareStr = label;
-        let addNumber = (x: number) => {
-          if (!x) return x;
-          label += `:${x}`;
-          compareStr += `:${String(x).padStart(7, "0")}`;
-          return x;
-        };
-        addNumber(lineSearch);
-        addNumber(lineNr);
-        addNumber(charPos);
+        // Append the line and col nums to the strings
+        for (let infoNumber of [lineSearch, lineNr, charPos]) {
+          if (infoNumber) {
+            label += `:${infoNumber}`;
+            compareStr += `:${String(infoNumber).padStart(7, "0")}`;
+          }
+        }
       }
       let key = label || linkPath;
       if (!links.has(key) || filePos < links.get(key).filePos) {
@@ -785,18 +783,114 @@ function activate(context: { subscriptions: vscode.Disposable[] }) {
      */
 
     // fs.readdirSync(path, { recursive: true });
-    console.log("YAHOOOOO");
-    return;
+
+    let enableLogging = vscode.workspace
+      .getConfiguration("cf-click")
+      .get("enableLogging");
+
+    if (enableLogging) {
+      console.log("YAHOOOOO");
+      console.log("URI", uri.toString());
+      console.log(`    goto: ${lineNr}:${charPos || 1}`);
+    }
+
+    let args = uri;
+    let scheme: string | undefined = undefined;
+    if (isObject(args) && !isUri(args)) {
+      uri = getProperty(args, "file", "Unknown");
+      lineSearch = getProperty(args, "lineSearch");
+      lineNr = convertToNumber(getProperty(args, "lineNr"));
+      charPos = convertToNumber(getProperty(args, "charPos"));
+      method = getProperty(args, "method");
+      viewColumn = getProperty(args, "viewColumn");
+      scheme = getProperty(args, "useScheme");
+    }
+    if (isArray(args)) {
+      if (args.length >= 4) {
+        lineSearch = args[3];
+      }
+      if (args.length >= 3) {
+        charPos = convertToNumber(args[2]);
+      }
+      if (args.length >= 2) {
+        lineNr = convertToNumber(args[1]);
+      }
+      uri = args[0];
+    }
+    viewColumn = viewColumn || vscode.ViewColumn.Active;
+    if (viewColumn === "active") {
+      viewColumn = vscode.ViewColumn.Active;
+    }
+    if (viewColumn === "beside") {
+      viewColumn = vscode.ViewColumn.Beside;
+    }
+    let editor = vscode.window.activeTextEditor;
+    if (viewColumn === "split" && editor) {
+      viewColumn = editor.viewColumn === 1 ? 2 : 1;
+    }
+    viewColumn = Number(viewColumn); // in case it is a number string
+    let document = editor ? editor.document : undefined;
+    if (isString(uri) && uri.indexOf("${") >= 0) {
+      uri = await variableSubstitutionAsync(uri, args, document, enableLogging);
+      uri = variableSubstitution(uri, args, document, enableLogging)!;
+    }
+    if (isString(uri)) {
+      uri = vscode.Uri.file(uri);
+    }
+    if (scheme) {
+      uri = uri.with({ scheme });
+    }
+    if (enableLogging) {
+      console.log("URI", JSON.stringify(uri.toJSON()));
+      console.log("URI", uri.toString());
+      console.log("Clicked on:", uri.fsPath);
+      console.log(`    goto: ${lineNr}:${charPos || 1}`);
+    }
+    if (method === "vscode.open") {
+      let showOptions = { preserveFocus: true, preview: false, viewColumn };
+      vscode.commands.executeCommand("vscode.open", uri, showOptions).then(
+        () => {
+          let editor = vscode.window.activeTextEditor;
+          if (!editor) {
+            return;
+          }
+          revealPosition(editor, lineNr!, charPos!, lineSearch!);
+        },
+        (error) => {
+          vscode.window.showErrorMessage(String(error));
+        }
+      );
+      return;
+    }
+
+    vscode.workspace.openTextDocument(uri).then(
+      (document) => {
+        if (enableLogging) {
+          console.log("Document opened:", uri.fsPath);
+        }
+        vscode.window
+          .showTextDocument(document, vscode.ViewColumn.Active, false)
+          .then((editor) => {
+            if (enableLogging) {
+              console.log("Editor opened:", uri.fsPath);
+            }
+            revealPosition(editor, lineNr!, charPos!, lineSearch!);
+          });
+      },
+      (error) => {
+        vscode.window.showErrorMessage(String(error));
+      }
+    );
   };
   const relatedLinksProvider = new RelatedLinksProvider();
   vscode.window.registerTreeDataProvider("cf-click", relatedLinksProvider);
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "cf-click.openFile",
-      (uri, lineNr, charPos, method, viewColumn, lineSearch) =>
-        openFile(uri, lineNr, charPos, method, viewColumn, lineSearch)
-    )
-  );
+  // context.subscriptions.push(
+  //   vscode.commands.registerCommand(
+  //     "cf-click.openFile",
+  //     (uri, lineNr, charPos, method, viewColumn, lineSearch) =>
+  //       openFile(uri, lineNr, charPos, method, viewColumn, lineSearch)
+  //   )
+  // );
   const onChangeActiveTextEditor = async (
     editor: vscode.TextEditor | undefined
   ) => {
