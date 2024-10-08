@@ -323,11 +323,17 @@ class RelatedPaths {
         }
       }
     }
-    var excludeRE = exclude!.map((re: string | RegExp) => new RegExp(re, "mi"));
-    this.paths = this.paths.filter(
-      (x: { linkPath: any }) =>
-        !excludeRE.some((r: { test: (arg0: any) => any }) => r.test(x.linkPath))
-    );
+    if (exclude) {
+      var excludeRE = exclude!.map(
+        (re: string | RegExp) => new RegExp(re, "mi")
+      );
+      this.paths = this.paths.filter(
+        (x: { linkPath: any }) =>
+          !excludeRE.some((r: { test: (arg0: any) => any }) =>
+            r.test(x.linkPath)
+          )
+      );
+    }
   }
   updateInclude(languageId: string, list: any[], asDoclink: boolean) {
     if (!isArray(list)) {

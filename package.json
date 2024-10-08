@@ -47,7 +47,7 @@
         {
           "id": "cf-click",
           "name": "Related Links",
-          "when": "cf-click:fileIsHTML && config.html-related-links.showIfHTML || config.html-related-links.alwaysShow"
+          "when": "cf-click:config.cf-click.alwaysShow"
         }
       ]
     },
@@ -154,6 +154,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "cf-click.alwaysShow": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Always show \"Related Links\" view"
         },
         "cf-click.enableLogging": {
           "type": "boolean",
