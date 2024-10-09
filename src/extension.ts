@@ -298,13 +298,8 @@ class RelatedPaths {
               // in-general and not a proper relative link, so also just search
               // for any files matching the filename itself in the whole repo.
               if (!fs.existsSync(linkPath)) {
-                console.log(`${filePath} is RAW FILENAME`);
                 // TODO: This is very inefficient... probably can be optimised
                 for (let filerootFolder of filerootFolders) {
-                  console.log(
-                    `SEARCHING filerootFolder: ${filerootFolder} ...`
-                  );
-
                   const files: string[] | Buffer[] = fs.readdirSync(
                     filerootFolder,
                     { recursive: true }
@@ -315,23 +310,15 @@ class RelatedPaths {
                       filerootFolder,
                       String(checkFile)
                     );
-                    console.log(`Checking file ${checkFilePath} ...`);
 
                     // Do any paths in the repo have an end that matches with our search filePath?
                     // If so lets just take the first match lol
-                    if (checkFilePath.endsWith(filePath)) {
-                      console.log(
-                        `Success: ${checkFilePath} ends with ${filePath}`
-                      );
-                      // Ddddddouble check that the path is not borked
+                    // Also double check that the path is valid
+                    if (
+                      checkFilePath.endsWith(filePath) &&
+                      fs.existsSync(checkFilePath)
+                    ) {
                       linkPath = checkFilePath;
-                      console.log(`resultant linkPath: ${linkPath}`);
-                      if (fs.existsSync(linkPath)) {
-                        console.log(
-                          `--- and the resultant linkPath ${linkPath} exists`
-                        );
-                        break;
-                      }
                     }
                   }
                   if (fs.existsSync(linkPath)) {
@@ -342,10 +329,12 @@ class RelatedPaths {
             }
           }
 
+          // TODO: Remove debug statements
           // linkPath =
           //   "/Users/alexnicholson/coding/projects/cf-click/TestProject/Application/images/house.png";
-          console.log(linkPath);
-          console.log("");
+
+          // console.log(linkPath);
+          // console.log("");
 
           // Only show the link if the file actually exists
           if (!fs.existsSync(linkPath)) {
@@ -848,139 +837,6 @@ function activate(context: { subscriptions: vscode.Disposable[] }) {
   );
   context.subscriptions.push(testCommand);
 
-  const openFile = async (
-    uri: string | vscode.Uri,
-    lineNr?: number,
-    charPos?: number,
-    method?: string,
-    viewColumn?:
-      | string
-      | vscode.ViewColumn.Active
-      | vscode.ViewColumn.Beside
-      | number,
-    lineSearch?: string
-  ) => {
-    /**
-     * Opens the file corresponding to the clicked link in the code
-     *
-     * I want to reengineer this a bit to be much more loose no the matching of similar filenames to be opened, since we cant easily be sure of the layout of the cf project relative path naming scheme
-     *
-     * Urls should appear like #application.root#/<some stuff>
-     *
-     * Simple way:
-     * For CF app files: We need to cut off the #application.root#/ from the start and then search from the cf-app-dir argument as base
-     * For SQL files: We need to search all of the sql directory for the <table/sp name>.sql
-     *
-     * Complex Way:
-     * Find the file whose path is the longest matching substring of the clicked link
-     *
-     * We could use a binary search to check through the clicked filename to find at which point the longest matching file match lies
-     * Basically all of the possible search points are the slashes (/) in the  file name, run a binary search beginning with the median slash
-     * (i.e. run bash `find -r . <teststring>`)
-     * - if we get 0 matches, then check next at the median of the right half (we know the longest-matching-substring point if it exists is to the right)
-     * - if we get > 0 matches, then check next at the median of the left half (we know the longest-matching-substring point if it exists is to the left or at our current point)
-     * Repeat until we find the file with the longest matching section of path (match must start all the way from the right obvs.)
-     */
-
-    // fs.readdirSync(path, { recursive: true });
-    console.log("YAHOOOOO");
-    console.log("hellomyDUDES");
-    return;
-
-    // console.log("URI", uri.toString());
-    // console.log(`    goto: ${lineNr}:${charPos || 1}`);
-
-    // let enableLogging = vscode.workspace
-    //   .getConfiguration("cf-click")
-    //   .get("enableLogging");
-    // let args = uri;
-    // let scheme: string | undefined = undefined;
-    // if (isObject(args) && !isUri(args)) {
-    //   uri = getProperty(args, "file", "Unknown");
-    //   lineSearch = getProperty(args, "lineSearch");
-    //   lineNr = convertToNumber(getProperty(args, "lineNr"));
-    //   charPos = convertToNumber(getProperty(args, "charPos"));
-    //   method = getProperty(args, "method");
-    //   viewColumn = getProperty(args, "viewColumn");
-    //   scheme = getProperty(args, "useScheme");
-    // }
-    // if (isArray(args)) {
-    //   if (args.length >= 4) {
-    //     lineSearch = args[3];
-    //   }
-    //   if (args.length >= 3) {
-    //     charPos = convertToNumber(args[2]);
-    //   }
-    //   if (args.length >= 2) {
-    //     lineNr = convertToNumber(args[1]);
-    //   }
-    //   uri = args[0];
-    // }
-    // viewColumn = viewColumn || vscode.ViewColumn.Active;
-    // if (viewColumn === "active") {
-    //   viewColumn = vscode.ViewColumn.Active;
-    // }
-    // if (viewColumn === "beside") {
-    //   viewColumn = vscode.ViewColumn.Beside;
-    // }
-    // let editor = vscode.window.activeTextEditor;
-    // if (viewColumn === "split" && editor) {
-    //   viewColumn = editor.viewColumn === 1 ? 2 : 1;
-    // }
-    // viewColumn = Number(viewColumn); // in case it is a number string
-    // let document = editor ? editor.document : undefined;
-    // if (isString(uri) && uri.indexOf("${") >= 0) {
-    //   uri = await variableSubstitutionAsync(uri, args, document, enableLogging);
-    //   uri = variableSubstitution(uri, args, document, enableLogging)!;
-    // }
-    // if (isString(uri)) {
-    //   uri = vscode.Uri.file(uri);
-    // }
-    // if (scheme) {
-    //   uri = uri.with({ scheme });
-    // }
-    // if (enableLogging) {
-    //   console.log("URI", JSON.stringify(uri.toJSON()));
-    //   console.log("URI", uri.toString());
-    //   console.log("Clicked on:", uri.fsPath);
-    //   console.log(`    goto: ${lineNr}:${charPos || 1}`);
-    // }
-    // if (method === "vscode.open") {
-    //   let showOptions = { preserveFocus: true, preview: false, viewColumn };
-    //   vscode.commands.executeCommand("vscode.open", uri, showOptions).then(
-    //     () => {
-    //       let editor = vscode.window.activeTextEditor;
-    //       if (!editor) {
-    //         return;
-    //       }
-    //       revealPosition(editor, lineNr!, charPos!, lineSearch!);
-    //     },
-    //     (error) => {
-    //       vscode.window.showErrorMessage(String(error));
-    //     }
-    //   );
-    //   return;
-    // }
-
-    // vscode.workspace.openTextDocument(uri).then(
-    //   (document) => {
-    //     if (enableLogging) {
-    //       console.log("Document opened:", uri.fsPath);
-    //     }
-    //     vscode.window
-    //       .showTextDocument(document, vscode.ViewColumn.Active, false)
-    //       .then((editor) => {
-    //         if (enableLogging) {
-    //           console.log("Editor opened:", uri.fsPath);
-    //         }
-    //         revealPosition(editor, lineNr!, charPos!, lineSearch!);
-    //       });
-    //   },
-    //   (error) => {
-    //     vscode.window.showErrorMessage(String(error));
-    //   }
-    // );
-  };
   const relatedLinksProvider = new RelatedLinksProvider();
   vscode.window.registerTreeDataProvider("cf-click", relatedLinksProvider);
   const onChangeActiveTextEditor = async (
