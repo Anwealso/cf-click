@@ -43,7 +43,15 @@
             "array",
             "object"
           ],
-          "default": [],
+          "default": [
+            "<(?:a|img|link|script)[^>]*? (?:src|href)=['\"]((?!//|[^:>'\"]*:)[^#?>'\"]*)(?:[^>'\"]*)['\"][^>]*>",
+            "<cfinclude[ ]+template[ ]*=[ ]*\"([^\"]+)\"[ ]*>",
+            "<cfinclude[ ]+template[ ]*=[ ]*\"([^\"]+)\"[ ]+[^>]*>",
+            "<cfmodule[ ]+template[ ]*=[ ]*\"([^\"]+)\"[ ]+[^>]*>",
+            "<cfmodule[^]*[ ]+template[ ]*=[ ]*\"([^\"]+)\"[^>]*>",
+            "<cfstoredproc[ ]+procedure[ ]*=[ ]*\"([^\"]+)\"[^>]*>",
+            "<cfquery[ ]+name[ ]*=[ ]*\"[^\"]+\"[^>]*>[^>]*FROM ([^ \n\r\t]+)"
+          ],
           "scope": "resource",
           "description": "Which other links to include (regexs)",
           "items": {
@@ -127,11 +135,11 @@
             "type": "string"
           }
         },
-        "cf-click.fileroot": {
+        "cf-click.fileroots": {
           "type": "array",
           "default": [],
           "scope": "resource",
-          "description": "Root directories for the sites in this workspace folder",
+          "description": "Root paths for the projects in this workspace folder. Add the root paths to your CF project and SQL DB project in here",
           "items": {
             "type": "string"
           }

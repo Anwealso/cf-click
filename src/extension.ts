@@ -183,7 +183,7 @@ class RelatedPaths {
     );
     var includeConfig: any | undefined = config.get("include");
     var exclude: string[] | RegExp[] | undefined = config.get("exclude");
-    var fileroots: string[] = config.get("fileroot")!;
+    var fileroots: string[] = config.get("fileroots")!;
     var linkRawFilenames: boolean = config.get("linkRawFilenames") == true;
     var enableLogging: boolean =
       vscode.workspace.getConfiguration("cf-click").get("enableLogging") ==
