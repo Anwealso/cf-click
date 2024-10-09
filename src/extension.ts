@@ -185,6 +185,9 @@ class RelatedPaths {
     var exclude: string[] | RegExp[] | undefined = config.get("exclude");
     var fileroots: string[] = config.get("fileroot")!;
     var linkRawFilenames: boolean = config.get("linkRawFilenames") == true;
+    var enableLogging: boolean =
+      vscode.workspace.getConfiguration("cf-click").get("enableLogging") ==
+      true;
 
     const stripTrailingSlash = (str: string) => {
       return str.endsWith("/") || str.endsWith("\\") ? str.slice(0, -1) : str;
@@ -242,6 +245,9 @@ class RelatedPaths {
       );
     }
 
+    if (enableLogging) {
+      console.log(`========== LINKS FOUND IN ${document.fileName}: ==========`);
+    }
     var docText: string = document.getText();
     this.paths = [];
     for (const languageId in this.include) {
@@ -263,7 +269,12 @@ class RelatedPaths {
             replaceRE,
             includeObj.filePath
           );
-          filePath = variableSubstitution(filePath, null, document, false)!;
+          filePath = variableSubstitution(
+            filePath,
+            null,
+            document,
+            enableLogging
+          )!;
           if (filePath.length === 0) {
             continue;
           }
@@ -300,8 +311,6 @@ class RelatedPaths {
                 // in-general and not a proper relative link, so also just search
                 // for any files matching the filename itself in the whole repo.
                 // TODO: This is very inefficient... probably can be optimised
-                console.log(`TRYING TO LINK RAW FILENAME ${filePath}`);
-
                 for (let filerootFolder of filerootFolders) {
                   const files: string[] | Buffer[] = fs.readdirSync(
                     filerootFolder,
@@ -322,8 +331,10 @@ class RelatedPaths {
                         checkFilePath.endsWith(filePath + ".sql")) &&
                       fs.existsSync(checkFilePath)
                     ) {
-                      console.log(`SUCCESS, matched: ${checkFilePath}`);
                       linkPath = checkFilePath;
+                      console.log(
+                        `${filePath} is RAW FILENAME matching ${linkPath}`
+                      );
                     }
                   }
                   if (fs.existsSync(linkPath)) {
@@ -335,9 +346,9 @@ class RelatedPaths {
           }
 
           // Only show the link if the file actually exists
-          // if (!fs.existsSync(linkPath)) {
-          //   continue;
-          // }
+          if (!fs.existsSync(linkPath)) {
+            continue;
+          }
 
           let isCurrentFile = linkPath === ownfilePath;
           if (!includeObj.allowCurrentFile && isCurrentFile) {
@@ -348,21 +359,17 @@ class RelatedPaths {
           // Get the proper result index after the from for queries
           let captureString: string = result[1];
           let captureMatchIndex: number = result[0].indexOf(captureString);
-          console.log(`captureMatchIndex 1: ${captureMatchIndex}`);
           if (
             result[0]
               .substring(captureMatchIndex + captureString.length)
               .indexOf(captureString)
           ) {
-            // If there is another occurence of the capture string in the regex match
-            // Get the first occurence after the FROM operator
+            // If there is another occurence of the capture string in the regex
+            // match, get the first occurence after the FROM operator
             let fromOpIndex = result[0].indexOf(`FROM`);
-            console.log(`fromOpIndex: ${fromOpIndex}`);
-
             captureMatchIndex =
               fromOpIndex +
               result[0].substring(fromOpIndex).indexOf(captureString);
-            console.log(`captureMatchIndex 2: ${captureMatchIndex}`);
           }
           let filePos = result.index + captureMatchIndex;
           let filePosEnd = filePos + captureString.length;
