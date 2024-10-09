@@ -201,15 +201,17 @@ class RelatedPaths {
     if (workspaceFolder) {
       let workspaceBasePath = workspaceFolder.uri.fsPath;
       for (const fileroot of fileroots) {
-        for (const root of fileroot) {
-          let possibleRoot = path.join(workspaceBasePath, root);
-          if (docFolder.startsWith(possibleRoot)) {
-            filerootFolders.push(possibleRoot);
-            break;
-          }
+        // Man why is this part just giving us .../A (all fucked up)
+        let possibleRoot = path.join(workspaceBasePath, fileroot);
+        if (
+          fs.existsSync(possibleRoot) &&
+          !filerootFolders.includes(possibleRoot)
+        ) {
+          filerootFolders.push(possibleRoot);
         }
       }
     }
+
     let asDoclink = true;
     this.include = {};
     if (isArray(includeConfig)) {
@@ -238,6 +240,7 @@ class RelatedPaths {
         !asDoclink
       );
     }
+
     var docText: string = document.getText();
     this.paths = [];
     for (const languageId in this.include) {
@@ -268,28 +271,81 @@ class RelatedPaths {
           if (filePath === "/") filePath = "/__root__";
           let linkPath = filePath;
           if (!includeObj.isAbsolutePath) {
-            // Strip off any # if needed
+            // Strip off any #application.root# if needed
             filePath = filePath.replace("#application.root#", "");
 
             // Need to change this prepending of filerootFolder based on whether the file is app or db
             if (filePath.startsWith("/")) {
               // The path is an absolute path from the repo root
               for (let filerootFolder of filerootFolders) {
-                // Test each root folder
+                // Test each root folder to check which one this path is absolute from
                 linkPath = path.join(filerootFolder, filePath.substring(1));
                 if (fs.existsSync(linkPath)) {
+                  console.log(
+                    `${filePath} is ABSOLUTE path from filerootFolder: ${filerootFolder}`
+                  );
                   break;
                 }
               }
             } else {
-              // The path is a local path from the curent document dir
+              // The path is a relative path from the curent document dir
               linkPath = path.join(docFolder, filePath);
+              if (fs.existsSync(linkPath)) {
+                console.log(`${filePath} is RELATIVE path from ${docFolder}`);
+              }
+
+              // Also sometimes the path is just a reference to the filename
+              // in-general and not a proper relative link, so also just search
+              // for any files matching the filename itself in the whole repo.
+              if (!fs.existsSync(linkPath)) {
+                console.log(`${filePath} is RAW FILENAME`);
+                // TODO: This is very inefficient... probably can be optimised
+                for (let filerootFolder of filerootFolders) {
+                  console.log(
+                    `SEARCHING filerootFolder: ${filerootFolder} ...`
+                  );
+
+                  const files: string[] | Buffer[] = fs.readdirSync(
+                    filerootFolder,
+                    { recursive: true }
+                  );
+                  // Search through all the files under each filerootFolder
+                  for (const checkFile of files) {
+                    let checkFilePath: string = path.join(
+                      filerootFolder,
+                      String(checkFile)
+                    );
+                    console.log(`Checking file ${checkFilePath} ...`);
+
+                    // Do any paths in the repo have an end that matches with our search filePath?
+                    // If so lets just take the first match lol
+                    if (checkFilePath.endsWith(filePath)) {
+                      console.log(
+                        `Success: ${checkFilePath} ends with ${filePath}`
+                      );
+                      // Ddddddouble check that the path is not borked
+                      linkPath = checkFilePath;
+                      console.log(`resultant linkPath: ${linkPath}`);
+                      if (fs.existsSync(linkPath)) {
+                        console.log(
+                          `--- and the resultant linkPath ${linkPath} exists`
+                        );
+                        break;
+                      }
+                    }
+                  }
+                  if (fs.existsSync(linkPath)) {
+                    break;
+                  }
+                }
+              }
             }
           }
 
           // linkPath =
           //   "/Users/alexnicholson/coding/projects/cf-click/TestProject/Application/images/house.png";
           console.log(linkPath);
+          console.log("");
 
           // Only show the link if the file actually exists
           if (!fs.existsSync(linkPath)) {
