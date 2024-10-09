@@ -112,6 +112,12 @@
             }
           }
         },
+        "cf-click.linkRawFilenames": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Show links on raw filenames in code (those without relative or absolute path). Turn off to increase load speed and performance."
+        },
         "cf-click.exclude": {
           "type": "array",
           "default": [],

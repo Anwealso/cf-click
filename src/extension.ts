@@ -184,6 +184,7 @@ class RelatedPaths {
     var includeConfig: any | undefined = config.get("include");
     var exclude: string[] | RegExp[] | undefined = config.get("exclude");
     var fileroots: string[] = config.get("fileroot")!;
+    var linkRawFilenames: boolean = config.get("linkRawFilenames") == true;
 
     const stripTrailingSlash = (str: string) => {
       return str.endsWith("/") || str.endsWith("\\") ? str.slice(0, -1) : str;
@@ -266,7 +267,7 @@ class RelatedPaths {
           if (filePath.length === 0) {
             continue;
           }
-          /* ------------------------------------ = ----------------------------------- */
+
           // Derive the absolute path to the file listed in the code path
           if (filePath === "/") filePath = "/__root__";
           let linkPath = filePath;
@@ -294,11 +295,13 @@ class RelatedPaths {
                 console.log(`${filePath} is RELATIVE path from ${docFolder}`);
               }
 
-              // Also sometimes the path is just a reference to the filename
-              // in-general and not a proper relative link, so also just search
-              // for any files matching the filename itself in the whole repo.
-              if (!fs.existsSync(linkPath)) {
+              if (!fs.existsSync(linkPath) && linkRawFilenames) {
+                // Also sometimes the path is just a reference to the filename
+                // in-general and not a proper relative link, so also just search
+                // for any files matching the filename itself in the whole repo.
                 // TODO: This is very inefficient... probably can be optimised
+                console.log(`TRYING TO LINK RAW FILENAME ${filePath}`);
+
                 for (let filerootFolder of filerootFolders) {
                   const files: string[] | Buffer[] = fs.readdirSync(
                     filerootFolder,
@@ -315,9 +318,11 @@ class RelatedPaths {
                     // If so lets just take the first match lol
                     // Also double check that the path is valid
                     if (
-                      checkFilePath.endsWith(filePath) &&
+                      (checkFilePath.endsWith(filePath) ||
+                        checkFilePath.endsWith(filePath + ".sql")) &&
                       fs.existsSync(checkFilePath)
                     ) {
+                      console.log(`SUCCESS, matched: ${checkFilePath}`);
                       linkPath = checkFilePath;
                     }
                   }
@@ -329,26 +334,38 @@ class RelatedPaths {
             }
           }
 
-          // TODO: Remove debug statements
-          // linkPath =
-          //   "/Users/alexnicholson/coding/projects/cf-click/TestProject/Application/images/house.png";
-
-          // console.log(linkPath);
-          // console.log("");
-
           // Only show the link if the file actually exists
-          if (!fs.existsSync(linkPath)) {
-            continue;
-          }
-          /* ------------------------------------ = ----------------------------------- */
+          // if (!fs.existsSync(linkPath)) {
+          //   continue;
+          // }
 
           let isCurrentFile = linkPath === ownfilePath;
           if (!includeObj.allowCurrentFile && isCurrentFile) {
             continue;
           }
           // Display the link only over the capture portion of the regex match
-          let filePos = result.index + result[0].indexOf(result[1]);
-          let filePosEnd = filePos + result[1].length;
+
+          // Get the proper result index after the from for queries
+          let captureString: string = result[1];
+          let captureMatchIndex: number = result[0].indexOf(captureString);
+          console.log(`captureMatchIndex 1: ${captureMatchIndex}`);
+          if (
+            result[0]
+              .substring(captureMatchIndex + captureString.length)
+              .indexOf(captureString)
+          ) {
+            // If there is another occurence of the capture string in the regex match
+            // Get the first occurence after the FROM operator
+            let fromOpIndex = result[0].indexOf(`FROM`);
+            console.log(`fromOpIndex: ${fromOpIndex}`);
+
+            captureMatchIndex =
+              fromOpIndex +
+              result[0].substring(fromOpIndex).indexOf(captureString);
+            console.log(`captureMatchIndex 2: ${captureMatchIndex}`);
+          }
+          let filePos = result.index + captureMatchIndex;
+          let filePosEnd = filePos + captureString.length;
           var offset2DisplayPosition = (offset: number) => {
             let position = document.positionAt(offset);
             return {
