@@ -246,7 +246,9 @@ class RelatedPaths {
     }
 
     if (enableLogging) {
-      console.log(`========== LINKS FOUND IN ${document.fileName}: ==========`);
+      console.log(
+        `\n========== LINKS FOUND IN ${document.fileName}: ==========`
+      );
     }
     var docText: string = document.getText();
     this.paths = [];
@@ -278,6 +280,7 @@ class RelatedPaths {
           if (filePath.length === 0) {
             continue;
           }
+          let isSqlFile = false;
 
           // Derive the absolute path to the file listed in the code path
           if (filePath === "/") filePath = "/__root__";
@@ -326,15 +329,19 @@ class RelatedPaths {
                     // Do any paths in the repo have an end that matches with our search filePath?
                     // If so lets just take the first match lol
                     // Also double check that the path is valid
-                    if (
-                      (checkFilePath.endsWith(filePath) ||
-                        checkFilePath.endsWith(filePath + ".sql")) &&
-                      fs.existsSync(checkFilePath)
-                    ) {
-                      linkPath = checkFilePath;
-                      console.log(
-                        `${filePath} is RAW FILENAME matching ${linkPath}`
-                      );
+                    if (fs.existsSync(checkFilePath)) {
+                      if (checkFilePath.endsWith(filePath)) {
+                        linkPath = checkFilePath;
+                        console.log(
+                          `${filePath} is RAW FILENAME matching ${linkPath}`
+                        );
+                      } else if (checkFilePath.endsWith(filePath + ".sql")) {
+                        isSqlFile = true;
+                        linkPath = checkFilePath;
+                        console.log(
+                          `${filePath} is RAW FILENAME matching ${linkPath}`
+                        );
+                      }
                     }
                   }
                   if (fs.existsSync(linkPath)) {
@@ -364,12 +371,27 @@ class RelatedPaths {
               .substring(captureMatchIndex + captureString.length)
               .indexOf(captureString)
           ) {
-            // If there is another occurence of the capture string in the regex
-            // match, get the first occurence after the FROM operator
-            let fromOpIndex = result[0].indexOf(`FROM`);
-            captureMatchIndex =
-              fromOpIndex +
-              result[0].substring(fromOpIndex).indexOf(captureString);
+            // If there is more than one occurence of the capture string in the regex
+            if (!isSqlFile) {
+              // Get the occurrence straight after the start of the relevant name attr
+              for (let nameAttrString in [
+                " template",
+                " component",
+                " procedure",
+              ]) {
+                const nameTagIndex = result[0].indexOf(nameAttrString);
+                captureMatchIndex =
+                  nameTagIndex +
+                  result[0].substring(nameTagIndex).indexOf(captureString) +
+                  1;
+              }
+            } else {
+              // Get the first occurence after the FROM operator
+              const fromOpIndex = result[0].indexOf(`FROM`);
+              captureMatchIndex =
+                fromOpIndex +
+                result[0].substring(fromOpIndex).indexOf(captureString);
+            }
           }
           let filePos = result.index + captureMatchIndex;
           let filePosEnd = filePos + captureString.length;
@@ -866,7 +888,6 @@ function activate(context: { subscriptions: vscode.Disposable[] }) {
   const onChangeActiveTextEditor = async (
     editor: vscode.TextEditor | undefined
   ) => {
-    console.log(editor!.document.languageId);
     vscode.commands.executeCommand(
       "setContext",
       "cf-click:fileIsCFML",
