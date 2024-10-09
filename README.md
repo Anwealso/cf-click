@@ -6,7 +6,7 @@ An extension to quickly jump to files in ColdFusion.
 
 ## Current Functionality
 
-![Demo](images/demo.png)
+![Demo](images/demo.jpg)
 
 - `<cfinclude>`
   - Click the path in the `template="MyPage.cfm"` argument to jump to the listed `CF_PROJ_PATH/.../<MyPage>.cfm` file
