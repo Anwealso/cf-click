@@ -23,20 +23,20 @@
     "commands": [
       {
         "command": "cf-click.helloWorld",
-        "title": "Hello World"
+        "title": "CFCLICK: Hello World"
       }
     ],
     "views": {
       "explorer": [
         {
           "id": "cf-click",
-          "name": "Related Links",
-          "when": "cf-click:config.cf-click.alwaysShow"
+          "name": "CF-Click Links",
+          "when": "cf-click:fileIsCFML && config.cf-click.showIfCFML || config.cf-click.alwaysShow"
         }
       ]
     },
     "configuration": {
-      "title": "HTML Related Links",
+      "title": "CF-Click",
       "properties": {
         "cf-click.include": {
           "type": [
@@ -144,9 +144,15 @@
         },
         "cf-click.alwaysShow": {
           "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Always show \"CF-Click Links\" view"
+        },
+        "cf-click.showIfCFML": {
+          "type": "boolean",
           "default": true,
           "scope": "resource",
-          "description": "Always show \"Related Links\" view"
+          "description": "Show \"CF-Click Related Links\" view when file language is CFML"
         },
         "cf-click.enableLogging": {
           "type": "boolean",

@@ -866,10 +866,11 @@ function activate(context: { subscriptions: vscode.Disposable[] }) {
   const onChangeActiveTextEditor = async (
     editor: vscode.TextEditor | undefined
   ) => {
+    console.log(editor!.document.languageId);
     vscode.commands.executeCommand(
       "setContext",
-      "cf-click:fileIsHTML",
-      editor && editor.document.languageId === "html"
+      "cf-click:fileIsCFML",
+      editor && editor.document.languageId === "cfml"
     );
     if (editor) {
       relatedLinksProvider.setPaths(new RelatedPaths(editor.document));
